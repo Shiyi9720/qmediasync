@@ -724,6 +724,11 @@ func InitScrapeSetting() {
 }
 
 func InitEmbyConfig() {
+	// 已存在 Emby 配置时不再重复插入：此前每次启动都会新增一条空记录
+	var embyCount int64
+	if err := db.Db.Model(&EmbyConfig{}).Count(&embyCount).Error; err == nil && embyCount > 0 {
+		return
+	}
 	embyConfig := &EmbyConfig{
 		EmbyUrl:                 "",
 		EmbyApiKey:              "",
