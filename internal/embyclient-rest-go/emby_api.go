@@ -368,6 +368,10 @@ func (c *Client) GetUsersWithAllLibrariesAccess() ([]UserDto, error) {
 
 // 刷新媒体库
 func (c *Client) RefreshLibrary(libraryId string, libraryName string) error {
+	// 刷新前确保该库只用 Nfo 元数据，避免 TMDb 拉取器把 nfo 里的中文标题覆盖成英文
+	if nfoErr := c.EnsureNfoMetadataOnly(libraryId); nfoErr != nil {
+		helpers.AppLogger.Warnf("设置媒体库 %s 为仅 Nfo 读取器失败（不影响刷新）: %v", libraryName, nfoErr)
+	}
 	// Construct the request URL
 	url := fmt.Sprintf("%s/emby/Items/%s/Refresh?api_key=%s&Fields=MediaStreams", c.embyURL, libraryId, c.apiKey)
 	err := helpers.PostUrl(url)

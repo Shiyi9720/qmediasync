@@ -606,10 +606,20 @@ func (sp *ScrapePath) DownloadImages(parentPath, ua string, fileList map[string]
 	}
 }
 
+// UnrecognizedLargeFileSize 未被识别为视频、但体积超过该值的文件会被告警提示。
+// 用于发现 video_ext 漏配的 ISO / BDMV 原盘 / m2ts 等格式。
+const UnrecognizedLargeFileSize int64 = 500 * 1024 * 1024 // 500MB
+
 func (sp *ScrapePath) CheckFileIsAllowed(fileName string, fileSize int64) bool {
 	fileExt := filepath.Ext(fileName)
 	if !sp.IsVideoFile(fileName) && !slices.Contains(AllowdExtArr, fileExt) {
-		helpers.AppLogger.Infof("非视频或元数据文件不需要处理: %s", fileName)
+		// 体积很大却不是已知视频格式，多半是 video_ext 没配到（如 .iso / .bdmv / .m2ts）。
+		// 静默跳过会导致这个文件不生成 strm，后续还可能被当成空壳目录处理，这里升级为 WARN。
+		if fileSize >= UnrecognizedLargeFileSize {
+			helpers.AppLogger.Warnf("文件 %s 体积 %dMB 很大，但扩展名 %s 不在 video_ext 中，已跳过；如果这是视频文件请把 %s 加入 video_ext 后重新同步", fileName, fileSize/1024/1024, fileExt, fileExt)
+		} else {
+			helpers.AppLogger.Infof("非视频或元数据文件不需要处理: %s", fileName)
+		}
 		return false // 如果不需要处理，则跳过
 	}
 	if sp.IsVideoFile(fileName) && fileSize < sp.MinVideoFileSize*1024*1024 {
