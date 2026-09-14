@@ -27,24 +27,31 @@ func NewTmdbMovieImpl(scrapePath *models.ScrapePath, ctx context.Context) *TmdbM
 
 // 检查电影是否存在
 func (t *TmdbMovieImpl) CheckByNameAndYear(name string, year int, switchYear bool) (string, int64, int, error) {
+	language := models.GlobalScrapeSettings.GetTmdbLanguage()
 	// 查询电影详情
-	movieDetail, err := t.Client.SearchMovie(name, year, models.GlobalScrapeSettings.GetTmdbLanguage(), true, !switchYear)
+	movieDetail, err := t.Client.SearchMovie(name, year, language, true, !switchYear)
 	if err != nil {
 		helpers.AppLogger.Errorf("查询tmdb电影详情失败, 下次重试, 失败原因: %v", err)
 		return "", 0, 0, err
 	}
 	if movieDetail != nil && movieDetail.TotalResults > 0 {
+		first := movieDetail.Results[0]
+		// TMDB 详情接口在中文语言下仍可能返回英文标题，这里尽量取中文标题
+		title := t.Client.GetMovieChineseTitle(first.ID, language, first.Title)
+		if title == "" {
+			title = first.Title
+		}
 		if movieDetail.TotalResults > 1 {
 			// 如果第一个数据的title等于name则认为是正确的
-			if strings.EqualFold(movieDetail.Results[0].Title, name) || strings.EqualFold(movieDetail.Results[0].OriginalTitle, name) {
-				return movieDetail.Results[0].Title, movieDetail.Results[0].ID, helpers.ParseYearFromDate(movieDetail.Results[0].ReleaseDate), nil
+			if strings.EqualFold(first.Title, name) || strings.EqualFold(first.OriginalTitle, name) {
+				return title, first.ID, helpers.ParseYearFromDate(first.ReleaseDate), nil
 			}
-			helpers.AppLogger.Infof("tmdb查询到多部电影，第一个电影标题 %s => %s， 年份 %d => %d", movieDetail.Results[0].Title, name, helpers.ParseYearFromDate(movieDetail.Results[0].ReleaseDate), year)
+			helpers.AppLogger.Infof("tmdb查询到多部电影，第一个电影标题 %s => %s， 年份 %d => %d", first.Title, name, helpers.ParseYearFromDate(first.ReleaseDate), year)
 			errorStr := fmt.Sprintf("通过名称 %s 年份 %d 在TMDB无法查询到多部电影，需要手工重新识别输入确定的tmdb id", name, year)
 			helpers.AppLogger.Error(errorStr)
 			return "", 0, 0, errors.New("多条记录")
 		} else {
-			return movieDetail.Results[0].Title, movieDetail.Results[0].ID, helpers.ParseYearFromDate(movieDetail.Results[0].ReleaseDate), nil
+			return title, first.ID, helpers.ParseYearFromDate(first.ReleaseDate), nil
 		}
 	} else if movieDetail != nil && movieDetail.TotalResults == 0 {
 		if switchYear {
@@ -59,13 +66,19 @@ func (t *TmdbMovieImpl) CheckByNameAndYear(name string, year int, switchYear boo
 
 // 去tmdb查询是否存在
 func (t *TmdbMovieImpl) CheckByTmdbId(tmdbId int64) (string, int, error) {
+	language := models.GlobalScrapeSettings.GetTmdbLanguage()
 	// 查询电影详情
-	movieDetail, err := t.Client.GetMovieDetail(tmdbId, models.GlobalScrapeSettings.GetTmdbLanguage())
+	movieDetail, err := t.Client.GetMovieDetail(tmdbId, language)
 	if err != nil {
 		helpers.AppLogger.Errorf("查询tmdb电影详情失败, 下次重试, 失败原因: %v", err)
 		return "", 0, err
 	}
-	return movieDetail.Title, helpers.ParseYearFromDate(movieDetail.ReleaseDate), nil
+	// TMDB 详情接口在中文语言下仍可能返回英文标题，这里尽量取中文标题
+	title := t.Client.GetMovieChineseTitle(tmdbId, language, movieDetail.Title)
+	if title == "" {
+		title = movieDetail.Title
+	}
+	return title, helpers.ParseYearFromDate(movieDetail.ReleaseDate), nil
 }
 
 // 检查季是否存在
