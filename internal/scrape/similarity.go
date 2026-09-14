@@ -1,6 +1,7 @@
 package scrape
 
 import (
+	"Q115-STRM/internal/helpers"
 	"strings"
 	"unicode"
 )
@@ -69,6 +70,24 @@ func levenshtein(a, b string) int {
 		prev, curr = curr, prev
 	}
 	return prev[lb]
+}
+
+// ShorterName 把名称按分隔符切分后去掉最后一段，用于刮削失败时重试。
+// 例如 "Movie.Name.2021.1080p.WEB-DL" => "Movie.Name.2021.1080p"。
+// 名称已经无法再缩短时返回 ok=false（调用方据此终止重试，避免无限递归）。
+func ShorterName(name string) (string, bool) {
+	names, delim := helpers.SplitTitle(name)
+	if len(names) <= 1 {
+		return "", false
+	}
+	for i := len(names) - 1; i >= 1; i-- {
+		candidate := strings.TrimSpace(strings.Join(names[:i], delim))
+		if candidate == "" || candidate == name {
+			continue
+		}
+		return candidate, true
+	}
+	return "", false
 }
 
 // NameSimilarity 计算两个名称的相似度，返回 0~1。

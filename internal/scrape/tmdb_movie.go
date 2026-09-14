@@ -80,6 +80,11 @@ func (t *TmdbMovieImpl) CheckByNameAndYear(name string, year int, switchYear boo
 			// 换一个年份字段
 			return t.CheckByNameAndYear(name, year, !switchYear)
 		}
+		// 年份也换过了仍查不到，逐级去掉名称尾部的片段再试（去掉分辨率/压制组等噪音）
+		if shorter, ok := ShorterName(name); ok {
+			helpers.AppLogger.Infof("tmdb未找到 %s，改用简化名称 %s 重试", name, shorter)
+			return t.CheckByNameAndYear(shorter, year, true)
+		}
 		return "", 0, 0, errors.New("tmdb没有数据")
 	} else {
 		return "", 0, 0, errors.New("tmdb没有数据")

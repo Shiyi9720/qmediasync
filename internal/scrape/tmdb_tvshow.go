@@ -35,6 +35,11 @@ func (t *TmdbTvShowImpl) CheckByNameAndYear(name string, year int, switchYear bo
 		return "", 0, 0, err
 	}
 	if len(tvShowDetail.Results) == 0 {
+		// 逐级去掉名称尾部的片段再试（去掉分辨率/压制组等噪音）
+		if shorter, ok := ShorterName(name); ok {
+			helpers.AppLogger.Infof("tmdb未找到电视剧 %s，改用简化名称 %s 重试", name, shorter)
+			return t.CheckByNameAndYear(shorter, year, switchYear)
+		}
 		// helpers.AppLogger.Errorf("识别结果 %s %d 查询失败, 失败原因: tmdb没有数据", name, year)
 		return "", 0, 0, errors.New("tmdb没有数据")
 	}
