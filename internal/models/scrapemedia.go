@@ -812,6 +812,9 @@ func (sm *ScrapeMediaFile) ReScrape(name string, year int, tmdbId int64, season 
 				return err
 			}
 			sm.Name = tvDetail.Name
+			if zh := tmdbClient.GetTvChineseTitle(sm.TmdbId, GlobalScrapeSettings.GetTmdbLanguage(), sm.Name); zh != "" {
+				sm.Name = zh
+			}
 			sm.Year = helpers.ParseYearFromDate(tvDetail.FirstAirDate)
 		} else {
 			// 剧集
@@ -840,6 +843,9 @@ func (sm *ScrapeMediaFile) ReScrape(name string, year int, tmdbId int64, season 
 				return merror
 			}
 			sm.Name = movieDetail.Title
+			if zh := tmdbClient.GetMovieChineseTitle(sm.TmdbId, GlobalScrapeSettings.GetTmdbLanguage(), sm.Name); zh != "" {
+				sm.Name = zh
+			}
 			sm.Year = helpers.ParseYearFromDate(movieDetail.ReleaseDate)
 		} else {
 			// 电影

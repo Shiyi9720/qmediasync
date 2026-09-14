@@ -680,15 +680,16 @@ func setRouter(r *gin.Engine) {
 		api.POST("/scrape/pathes/stop", controllers.StopScrape)                       // 停止刮削任务
 		api.POST("/scrape/pathes/toggle-cron", controllers.ToggleScrapePathCron)      // 关闭或开启刮削路径的定时刮削
 		api.GET("/scrape/records", controllers.GetScrapeRecords)                      // 获取刮削记录
-		api.POST("/scrape/re-scrape", controllers.ReScrape)                           // 重新刮削记录
-		api.POST("/scrape/clear-failed", controllers.ClearFailedScrapeRecords)        // 清除所有刮削失败的记录
-		api.POST("/scrape/truncate-all", controllers.TruncateAllScrapeRecords)        // 一键清空所有刮削记录
-		api.DELETE("/scrape/records", controllers.DeleteScrapeMediaFile)              // 删除刮削记录
-		api.POST("/scrape/finish", controllers.FinishScrapeMediaFile)                 // 完成刮削记录
-		api.POST("/scrape/rename-failed", controllers.RenameFailedScrapeMediaFile)    // 标记所有失败的记录为待整理
-		api.POST("/scrape/sync-pathes", controllers.SaveScrapeStrmPath)               // 保存刮削目录关联的同步目录
-		api.GET("/scrape/sync-pathes", controllers.GetScrapeStrmPaths)                // 获取刮削目录关联的同步目录
-		api.GET("/scrape/tmdb-search", controllers.TmdbSearch)                        // 搜索TMDB媒体
+		api.POST("/scrape/re-scrape", controllers.ReScrape)
+		api.POST("/scrape/batch-re-scrape-zh", controllers.BatchReScrapeZh)        // 批量中文名回填                           // 重新刮削记录
+		api.POST("/scrape/clear-failed", controllers.ClearFailedScrapeRecords)     // 清除所有刮削失败的记录
+		api.POST("/scrape/truncate-all", controllers.TruncateAllScrapeRecords)     // 一键清空所有刮削记录
+		api.DELETE("/scrape/records", controllers.DeleteScrapeMediaFile)           // 删除刮削记录
+		api.POST("/scrape/finish", controllers.FinishScrapeMediaFile)              // 完成刮削记录
+		api.POST("/scrape/rename-failed", controllers.RenameFailedScrapeMediaFile) // 标记所有失败的记录为待整理
+		api.POST("/scrape/sync-pathes", controllers.SaveScrapeStrmPath)            // 保存刮削目录关联的同步目录
+		api.GET("/scrape/sync-pathes", controllers.GetScrapeStrmPaths)             // 获取刮削目录关联的同步目录
+		api.GET("/scrape/tmdb-search", controllers.TmdbSearch)                     // 搜索TMDB媒体
 
 		api.GET("/upload/queue", controllers.UploadList)                                             // 获取上传队列列表
 		api.POST("/upload/queue/clear-pending", controllers.ClearPendingUploadTasks)                 // 清除上传队列中未开始的任务
