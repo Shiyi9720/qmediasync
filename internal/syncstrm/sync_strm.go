@@ -24,6 +24,12 @@ type StrmData struct {
 // 生成strm文件
 // st只能是来源路径，所以需要生成strm文件的路径
 func (s *SyncStrm) ProcessStrmFile(sf *SyncFileCache) error {
+	// 源文件为 0 字节通常是异常：远端文件缺失，或扩展名未纳入 video_ext 导致未被识别。
+	// 这里跳过并告警，避免生成指向异常文件的 strm 后被后续流程误判为「空壳」。
+	if sf.FileSize <= 0 {
+		s.Sync.Logger.Warnf("[生成strm] 源文件大小为 0，跳过: %s（若这是视频文件，请检查 video_ext 是否包含它的扩展名，例如 .iso）", filepath.Join(sf.Path, sf.FileName))
+		return nil
+	}
 	rs := s.CompareStrm(sf)
 	if rs == 1 {
 		// s.Sync.Logger.Infof("文件 %s 已存在且无需更新strm文件，跳过", filepath.Join(sf.Path, sf.FileName))
