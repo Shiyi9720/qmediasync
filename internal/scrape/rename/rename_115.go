@@ -543,6 +543,17 @@ func (r *Rename115) MoveFiles(f models.MoveNewFileToSourceFile) error {
 }
 
 func (r *Rename115) DeleteDir(path, pathId string) error {
+	// 安全保护：目录下仍有文件/子目录时不删除。115 的删除会把内容移进回收站，
+	// 一旦误删有内容的目录就会丢失资源（2026-09-15 事故：回滚流程把刚重命名好的目录删掉了）。
+	list, lerr := r.client.GetFsList(r.ctx, pathId, true, false, false, 0, 100)
+	if lerr != nil || list == nil {
+		helpers.AppLogger.Warnf("检查115目录内容失败，为安全起见跳过删除: 目录ID：%s 错误：%v", pathId, lerr)
+		return nil
+	}
+	if list.Count > 0 {
+		helpers.AppLogger.Warnf("115目录下仍有 %d 个条目，为安全起见跳过删除: 目录ID：%s", list.Count, pathId)
+		return nil
+	}
 	parentPath := filepath.Dir(path)
 	parentDetail, err := r.client.GetFsDetailByPath(r.ctx, parentPath)
 	if err != nil || (parentDetail != nil && parentDetail.FileId == "") {

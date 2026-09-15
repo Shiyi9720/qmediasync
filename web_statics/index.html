@@ -14,5 +14,63 @@
   </head>
   <body>
     <div id="app"></div>
+  
+    <!-- QMS 集成版：中文名回填入口 -->
+    <script>
+    (function () {
+      if (window.__qmsZhHelper) return;
+      window.__qmsZhHelper = true;
+      var LABEL = '中文名回填';
+      var btn = document.createElement('div');
+      btn.textContent = LABEL;
+      btn.title = '把已刮削但仍是英文名的条目，用 TMDB 中文译名回填';
+      btn.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:99999;padding:10px 16px;' +
+        'border-radius:20px;background:#1f883d;color:#fff;font-size:13px;cursor:pointer;' +
+        'box-shadow:0 2px 10px rgba(0,0,0,.25);user-select:none;font-family:inherit';
+      document.body.appendChild(btn);
+
+      function api(path, body, token) {
+        var headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        return fetch(path, { method: 'POST', headers: headers, body: JSON.stringify(body) })
+          .then(function (r) { return r.json(); });
+      }
+
+      btn.onclick = function () {
+        var pwd = prompt('请输入 QMS 管理员密码（用户名 admin）:');
+        if (!pwd) return;
+        btn.textContent = '登录中...';
+        api('/api/login', { username: 'admin', password: pwd }).then(function (lr) {
+          var token = lr && lr.data && (lr.data.token || lr.data.access_token);
+          if (!token) { alert('登录失败：' + ((lr && lr.message) || '未知错误')); btn.textContent = LABEL; return null; }
+          btn.textContent = '试跑中...';
+          return api('/api/scrape/batch-re-scrape-zh', { dry_run: true, limit: 500 }, token).then(function (dr) {
+            if (!dr || dr.code !== 200) { alert('试跑失败：' + ((dr && dr.message) || '未知错误')); btn.textContent = LABEL; return; }
+            var items = (dr.data && dr.data.items) || [];
+            if (items.length === 0) { alert('没有需要回填的条目（已全部是中文名）'); btn.textContent = LABEL; return; }
+            var list = items.slice(0, 30).map(function (i) { return '· ' + i.name + '  (tmdb ' + i.tmdb_id + ')'; }).join('\n');
+            var more = items.length > 30 ? '\n... 其余 ' + (items.length - 30) + ' 条略' : '';
+            if (!confirm('试跑结果：共 ' + items.length + ' 条需要回填\n\n' + list + more +
+                         '\n\n确定执行？执行后 QMS 会把这些条目移回源目录，下次扫描按中文名重新整理。')) {
+              btn.textContent = LABEL; return;
+            }
+            btn.textContent = '执行中...';
+            return api('/api/scrape/batch-re-scrape-zh', { dry_run: false, limit: 500 }, token).then(function (rr) {
+              if (rr && rr.code === 200) {
+                alert('已提交：成功 ' + rr.data.success + ' 条，失败 ' + rr.data.failed +
+                      ' 条。\n下次扫描会按中文名重新整理。');
+              } else {
+                alert('执行失败：' + ((rr && rr.message) || '未知错误'));
+              }
+              btn.textContent = LABEL;
+            });
+          });
+        }).catch(function (e) {
+          alert('请求出错：' + e);
+          btn.textContent = LABEL;
+        });
+      };
+    })();
+    </script>
   </body>
 </html>
