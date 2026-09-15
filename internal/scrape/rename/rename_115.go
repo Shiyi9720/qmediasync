@@ -363,7 +363,12 @@ func (r *Rename115) CheckAndMkDir(destFullPath string, rootPath, rootPathId stri
 	if err == nil && fsDetail.FileId != "" {
 		return fsDetail.FileId, nil
 	}
-	relPath, err := filepath.Rel(rootPath, destFullPath)
+	// rootPath 与 destFullPath 的前导斜杠可能不一致（一个来自配置的 "/电影"，
+	// 一个来自 new_path_name 的 "电影/外语电影/xxx"），直接 Rel 会报
+	// "can't make ... relative to ..."，导致回滚永远失败。这里先统一格式。
+	relBase := strings.TrimPrefix(rootPath, "/")
+	relTarget := strings.TrimPrefix(destFullPath, "/")
+	relPath, err := filepath.Rel(relBase, relTarget)
 	if err != nil {
 		helpers.AppLogger.Errorf("获取相对路径失败: %v", err)
 		return "", err
@@ -422,6 +427,10 @@ func (r *Rename115) RemoveMediaSourcePath(mediaFile *models.ScrapeMediaFile, sp 
 				return nil
 			}
 		}
+	}
+	if fsList.Count > 0 && !sp.ForceDeleteSourcePath {
+		helpers.AppLogger.Warnf("115目录 %s 下仍有 %d 个条目（非视频），为安全起见跳过删除；如需强制清理请在刮削目录开启 force_delete_source_path", sourcePathId, fsList.Count)
+		return nil
 	}
 	if fsList.Count == 0 || sp.ForceDeleteSourcePath {
 		// 取父文件夹，从fsDetail.Paths中取最后一个
